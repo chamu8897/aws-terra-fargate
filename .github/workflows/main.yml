@@ -1,0 +1,100 @@
+name: Terraform Multi-Env Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - uat
+      - prod
+
+jobs:
+  terraform-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials (Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/TerraformDevRole
+          aws-region: us-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/dev/backend.tfvars"
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="environments/dev/terraform.tfvars"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var-file="environments/dev/terraform.tfvars"
+
+  terraform-uat:
+    if: github.ref == 'refs/heads/uat'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials (UAT)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/TerraformUatRole
+          aws-region: us-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/stage/backend.tfvars"
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="environments/stage/terraform.tfvars"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var-file="environments/stage/terraform.tfvars"
+
+  terraform-prod:
+    if: github.ref == 'refs/heads/prod'
+    runs-on: ubuntu-latest
+    environment: prod   # GitHub environment with approval gate
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials (Prod)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/TerraformProdRole
+          aws-region: us-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/prod/backend.tfvars"
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="environments/prod/terraform.tfvars"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var-file="environments/prod/terraform.tfvars"
