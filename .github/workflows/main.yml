@@ -5,7 +5,7 @@ on:
     branches:
       - dev
       - uat
-      - prod
+      - main
 
 jobs:
   terraform-dev:
